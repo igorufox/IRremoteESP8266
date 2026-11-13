@@ -43,6 +43,9 @@ extern "C" {
 #if defined(ESP32)
 #define USE_IRAM_ATTR IRAM_ATTR
 #endif  // ESP32
+#if defined(LIBRETINY)
+#define USE_IRAM_ATTR
+#endif  // LIBRETINY
 #endif  // USE_IRAM_ATTR
 
 #define ONCE 0
@@ -61,6 +64,12 @@ namespace _IRrecv {
 static ETSTimer timer;
 }  // namespace _IRrecv
 #endif  // ESP8266
+#if defined(LIBRETINY)
+// LibreTiny (BK72xx, RTL87xx ...): no timer, the end of a message is found from the time of the last edge (decode())
+namespace _IRrecv {
+static volatile uint32_t last_edge = 0;
+}  // namespace _IRrecv
+#endif  // LIBRETINY
 #if defined(ESP32)
 #if ( defined(ESP_ARDUINO_VERSION) && \
     (ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)) )
@@ -147,7 +156,9 @@ namespace _IRrecv {
 static hw_timer_t *timer = NULL;
 }  // namespace _IRrecv
 #endif  // ESP32
+#if defined(ESP8266) || defined(ESP32)
 using _IRrecv::timer;
+#endif  // ESP8266 || ESP32
 #endif  // UNIT_TEST
 
 namespace _IRrecv {  // Namespace extension
@@ -181,6 +192,12 @@ static void USE_IRAM_ATTR read_timeout(void) {
 /// @endcond
   portENTER_CRITICAL(&mux);
 #endif  // ESP32
+#if defined(LIBRETINY)
+/// Capturing of IR data has stopped: no edge for the timeout (decode()).
+/// @note LibreTiny version
+static void read_timeout(void) {
+  noInterrupts();
+#endif  // LIBRETINY
   if (params.rawlen) params.rcvstate = kStopState;
 #if defined(ESP8266)
   os_intr_unlock();
@@ -188,6 +205,9 @@ static void USE_IRAM_ATTR read_timeout(void) {
 #if defined(ESP32)
   portEXIT_CRITICAL(&mux);
 #endif  // ESP32
+#if defined(LIBRETINY)
+  interrupts();
+#endif  // LIBRETINY
 }
 
 /// Interrupt handler for changes on the GPIO pin handling incoming IR messages.
@@ -232,6 +252,9 @@ static void USE_IRAM_ATTR gpio_intr() {
 #if defined(ESP8266)
   os_timer_arm(&timer, params.timeout, ONCE);
 #endif  // ESP8266
+#if defined(LIBRETINY)
+  _IRrecv::last_edge = now;
+#endif  // LIBRETINY
 #if defined(ESP32)
   // Reset the timeout.
   //
@@ -589,6 +612,12 @@ bool IRrecv::decode(decode_results *results, irparams_t *save,
                     uint8_t max_skip, uint16_t noise_floor) {
   // Proceed only if an IR message been received.
 #ifndef UNIT_TEST
+#if defined(LIBRETINY)
+  // No timer: the message ended when there was no edge for the timeout
+  if ((params.rcvstate != kStopState) && params.rawlen &&
+      ((micros() - _IRrecv::last_edge) >= MS_TO_USEC(params.timeout)))
+    read_timeout();
+#endif  // LIBRETINY
   if (params.rcvstate != kStopState) return false;
 #endif
 
