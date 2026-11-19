@@ -2,7 +2,7 @@
 
 #include "IRutils.h"
 #ifndef UNIT_TEST
-#include <Arduino.h>
+#include "IRremoteESP8266.h"
 #endif
 
 #define __STDC_LIMIT_MACROS
@@ -21,7 +21,7 @@
 // On the ESP8266 platform we need to use a set of ..._P functions
 // to handle the strings stored in the flash address space.
 #ifndef STRCASECMP
-#if defined(ESP8266)
+#if (defined(ESP8266) && !defined(IR_ESPURNA))
 #define STRCASECMP(LHS, RHS) \
     strcasecmp_P(LHS, reinterpret_cast<const char*>(RHS))
 #else  // ESP8266
@@ -29,7 +29,7 @@
 #endif  // ESP8266
 #endif  // STRCASECMP
 #ifndef STRLEN
-#if defined(ESP8266)
+#if (defined(ESP8266) && !defined(IR_ESPURNA))
 #define STRLEN(PTR) strlen_P(PTR)
 #else  // ESP8266
 #define STRLEN(PTR) strlen(PTR)
@@ -104,7 +104,7 @@ String int64ToString(int64_t input, uint8_t base) {
   return uint64ToString(input, base);
 }
 
-#ifdef ARDUINO
+#if defined(ARDUINO) && !defined(IR_ESPURNA)
 /// Print a uint64_t/unsigned long long to the Serial port
 /// Serial.print() can't handle printing long longs. (uint64_t)
 /// @param[in] input The value to print

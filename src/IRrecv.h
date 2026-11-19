@@ -7,7 +7,7 @@
 #define IRRECV_H_
 
 #ifndef UNIT_TEST
-#include <Arduino.h>
+#include "IRremoteESP8266.h"
 #endif
 #include <stddef.h>
 #define __STDC_LIMIT_MACROS
@@ -52,7 +52,7 @@ const uint16_t kMaxTimeoutMs = kRawTick * (UINT16_MAX / MS_TO_USEC(1));
 const uint32_t kFnvPrime32 = 16777619UL;
 const uint32_t kFnvBasis32 = 2166136261UL;
 
-#ifdef ESP32
+#if defined(ESP32) && !defined(IR_ESPURNA)
 // Which of the ESP32 timers to use by default.
 // (3 for most ESP32s, 1 for ESP32-C3s)
 #ifdef SOC_TIMER_GROUP_TOTAL_TIMERS
@@ -122,7 +122,7 @@ class decode_results {
 /// Class for receiving IR messages.
 class IRrecv {
  public:
-#if defined(ESP32)
+#if (defined(ESP32) && !defined(IR_ESPURNA))
   explicit IRrecv(const uint16_t recvpin, const uint16_t bufsize = kRawBuf,
                   const uint8_t timeout = kTimeoutMs,
                   const bool save_buffer = false,
@@ -166,9 +166,9 @@ class IRrecv {
 #endif
   irparams_t *irparams_save;
   uint8_t _tolerance;
-#if defined(ESP32)
+#if (defined(ESP32) && !defined(IR_ESPURNA))
   uint8_t _timer_num;
-#endif  // defined(ESP32)
+#endif  // (defined(ESP32) && !defined(IR_ESPURNA))
 #if DECODE_HASH
   uint16_t _unknown_threshold;
 #endif

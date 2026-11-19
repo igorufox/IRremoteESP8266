@@ -59,7 +59,7 @@
 #define IR_DAIKIN_H_
 
 #ifndef UNIT_TEST
-#include <Arduino.h>
+#include "IRremoteESP8266.h"
 #endif
 #include "IRrecv.h"
 #include "IRremoteESP8266.h"

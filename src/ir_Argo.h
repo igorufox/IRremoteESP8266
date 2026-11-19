@@ -14,7 +14,7 @@
 #include <set>
 #include <utility>
 #ifndef UNIT_TEST
-#include <Arduino.h>
+#include "IRremoteESP8266.h"
 #endif
 #include "IRremoteESP8266.h"
 #include "IRsend.h"

@@ -49,7 +49,7 @@
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef ARDUINO
-#include <Arduino.h>
+#include "IRremoteESP8266.h"
 #endif
 #include "IRrecv.h"
 #include "IRremoteESP8266.h"

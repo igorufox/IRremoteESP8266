@@ -6,7 +6,7 @@
 
 #include "IRac.h"
 #ifndef UNIT_TEST
-#include <Arduino.h>
+#include "IRremoteESP8266.h"
 #endif
 #include <string.h>
 #ifndef ARDUINO
@@ -64,7 +64,7 @@
 // On the ESP8266 platform we need to use a special version of string handling
 // functions to handle the strings stored in the flash address space.
 #ifndef STRCASECMP
-#if defined(ESP8266)
+#if (defined(ESP8266) && !defined(IR_ESPURNA))
 #define STRCASECMP(LHS, RHS) \
     strcasecmp_P(LHS, reinterpret_cast<const char*>(RHS))
 #else  // ESP8266

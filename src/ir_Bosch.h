@@ -22,7 +22,7 @@
 #include "IRtext.h"
 #include "IRutils.h"
 #ifndef UNIT_TEST
-#include <Arduino.h>
+#include "IRremoteESP8266.h"
 #endif
 #ifdef UNIT_TEST
 #include "IRsend_test.h"

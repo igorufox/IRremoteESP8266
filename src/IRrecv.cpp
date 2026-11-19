@@ -6,13 +6,13 @@
 #include "IRrecv.h"
 #include <stddef.h>
 #ifndef UNIT_TEST
-#if defined(ESP8266)
+#if (defined(ESP8266) && !defined(IR_ESPURNA))
 extern "C" {
 #include <gpio.h>
 #include <user_interface.h>
 }
 #endif  // ESP8266
-#include <Arduino.h>
+#include "IRremoteESP8266.h"
 #endif  // UNIT_TEST
 #include <algorithm>
 #ifdef UNIT_TEST
@@ -21,7 +21,7 @@ extern "C" {
 #include "IRremoteESP8266.h"
 #include "IRutils.h"
 
-#if defined(ESP32)
+#if (defined(ESP32) && !defined(IR_ESPURNA))
 #if ( defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 3) )
 #include <driver/gpio.h>
 #endif  // ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -33,19 +33,20 @@ extern "C" {
 #endif
 
 #ifndef USE_IRAM_ATTR
-#if defined(ESP8266)
+#if (defined(ESP8266) && !defined(IR_ESPURNA))
 #if defined(IRAM_ATTR)
 #define USE_IRAM_ATTR IRAM_ATTR
 #else  // IRAM_ATTR
 #define USE_IRAM_ATTR ICACHE_RAM_ATTR
 #endif  // IRAM_ATTR
 #endif  // ESP8266
-#if defined(ESP32)
+#if (defined(ESP32) && !defined(IR_ESPURNA))
 #define USE_IRAM_ATTR IRAM_ATTR
 #endif  // ESP32
-#if defined(LIBRETINY)
-#define USE_IRAM_ATTR
-#endif  // LIBRETINY
+#if defined(IR_ESPURNA)
+// the interrupt handler in IRAM where the chip has it (ESPurna's IRAM_ATTR: ESP8266, ESP32; nothing on the BK7231N)
+#define USE_IRAM_ATTR IRAM_ATTR
+#endif  // IR_ESPURNA
 #endif  // USE_IRAM_ATTR
 
 #define ONCE 0
@@ -59,18 +60,18 @@ extern "C" {
 
 // Globals
 #ifndef UNIT_TEST
-#if defined(ESP8266)
+#if (defined(ESP8266) && !defined(IR_ESPURNA))
 namespace _IRrecv {
 static ETSTimer timer;
 }  // namespace _IRrecv
 #endif  // ESP8266
-#if defined(LIBRETINY)
-// LibreTiny (BK72xx, RTL87xx ...): no timer, the end of a message is found from the time of the last edge (decode())
+#if defined(IR_ESPURNA)
+// ESPurna (every chip): no timer, the end of a message is found from the time of the last edge (decode())
 namespace _IRrecv {
 static volatile uint32_t last_edge = 0;
 }  // namespace _IRrecv
-#endif  // LIBRETINY
-#if defined(ESP32)
+#endif  // IR_ESPURNA
+#if (defined(ESP32) && !defined(IR_ESPURNA))
 #if ( defined(ESP_ARDUINO_VERSION) && \
     (ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)) )
 #define _ESP32_ARDUINO_CORE_V3PLUS
@@ -156,27 +157,27 @@ namespace _IRrecv {
 static hw_timer_t *timer = NULL;
 }  // namespace _IRrecv
 #endif  // ESP32
-#if defined(ESP8266) || defined(ESP32)
+#if (defined(ESP8266) && !defined(IR_ESPURNA)) || (defined(ESP32) && !defined(IR_ESPURNA))
 using _IRrecv::timer;
 #endif  // ESP8266 || ESP32
 #endif  // UNIT_TEST
 
 namespace _IRrecv {  // Namespace extension
-#if defined(ESP32)
+#if (defined(ESP32) && !defined(IR_ESPURNA))
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 #endif  // ESP32
 atomic_irparams_t params;
 irparams_t *params_save;  // A copy of the interrupt state while decoding.
 }  // namespace _IRrecv
 
-#if defined(ESP32)
+#if (defined(ESP32) && !defined(IR_ESPURNA))
 using _IRrecv::mux;
 #endif  // ESP32
 using _IRrecv::params;
 using _IRrecv::params_save;
 
 #ifndef UNIT_TEST
-#if defined(ESP8266)
+#if (defined(ESP8266) && !defined(IR_ESPURNA))
 /// Interrupt handler for when the timer runs out.
 /// It signals to the library that capturing of IR data has stopped.
 /// @param[in] arg Unused. (ESP8266 Only)
@@ -184,7 +185,7 @@ static void USE_IRAM_ATTR read_timeout(void *arg __attribute__((unused))) {
   os_intr_lock();
 #endif  // ESP8266
 /// @cond IGNORE
-#if defined(ESP32)
+#if (defined(ESP32) && !defined(IR_ESPURNA))
 /// Interrupt handler for when the timer runs out.
 /// It signals to the library that capturing of IR data has stopped.
 /// @note ESP32 version
@@ -192,22 +193,22 @@ static void USE_IRAM_ATTR read_timeout(void) {
 /// @endcond
   portENTER_CRITICAL(&mux);
 #endif  // ESP32
-#if defined(LIBRETINY)
+#if defined(IR_ESPURNA)
 /// Capturing of IR data has stopped: no edge for the timeout (decode()).
-/// @note LibreTiny version
+/// @note ESPurna version
 static void read_timeout(void) {
   noInterrupts();
-#endif  // LIBRETINY
+#endif  // IR_ESPURNA
   if (params.rawlen) params.rcvstate = kStopState;
-#if defined(ESP8266)
+#if (defined(ESP8266) && !defined(IR_ESPURNA))
   os_intr_unlock();
 #endif  // ESP8266
-#if defined(ESP32)
+#if (defined(ESP32) && !defined(IR_ESPURNA))
   portEXIT_CRITICAL(&mux);
 #endif  // ESP32
-#if defined(LIBRETINY)
+#if defined(IR_ESPURNA)
   interrupts();
-#endif  // LIBRETINY
+#endif  // IR_ESPURNA
 }
 
 /// Interrupt handler for changes on the GPIO pin handling incoming IR messages.
@@ -215,7 +216,7 @@ static void USE_IRAM_ATTR gpio_intr() {
   uint32_t now = micros();
   static uint32_t start = 0;
 
-#if defined(ESP8266)
+#if (defined(ESP8266) && !defined(IR_ESPURNA))
   uint32_t gpio_status = GPIO_REG_READ(GPIO_STATUS_ADDRESS);
   os_timer_disarm(&timer);
   GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, gpio_status);
@@ -249,13 +250,13 @@ static void USE_IRAM_ATTR gpio_intr() {
 
   start = now;
 
-#if defined(ESP8266)
+#if (defined(ESP8266) && !defined(IR_ESPURNA))
   os_timer_arm(&timer, params.timeout, ONCE);
 #endif  // ESP8266
-#if defined(LIBRETINY)
+#if defined(IR_ESPURNA)
   _IRrecv::last_edge = now;
-#endif  // LIBRETINY
-#if defined(ESP32)
+#endif  // IR_ESPURNA
+#if (defined(ESP32) && !defined(IR_ESPURNA))
   // Reset the timeout.
   //
 #if _ESP32_ARDUINO_CORE_V2PLUS
@@ -301,7 +302,7 @@ static void USE_IRAM_ATTR gpio_intr() {
 ///   (Default: false)
 /// @param[in] timer_num Nr. of the ESP32 timer to use. (0 to 3) (ESP32 Only)
 ///   or (0 to 1) (ESP32-C3)
-#if defined(ESP32)
+#if (defined(ESP32) && !defined(IR_ESPURNA))
 IRrecv::IRrecv(const uint16_t recvpin, const uint16_t bufsize,
                const uint8_t timeout, const bool save_buffer,
                const uint8_t timer_num) {
@@ -340,7 +341,7 @@ IRrecv::IRrecv(const uint16_t recvpin, const uint16_t bufsize,
         "Could not allocate memory for the primary IR buffer.\n"
         "Try a smaller size for CAPTURE_BUFFER_SIZE.\nRebooting!");
 #ifndef UNIT_TEST
-    ESP.restart();  // Mem alloc failure. Reboot.
+    IR_RESTART();  // Mem alloc failure. Reboot.
 #endif
   }
   // If we have been asked to use a save buffer (for decoding), then create one.
@@ -353,7 +354,7 @@ IRrecv::IRrecv(const uint16_t recvpin, const uint16_t bufsize,
           "Could not allocate memory for the second IR buffer.\n"
           "Try a smaller size for CAPTURE_BUFFER_SIZE.\nRebooting!");
 #ifndef UNIT_TEST
-      ESP.restart();  // Mem alloc failure. Reboot.
+      IR_RESTART();  // Mem alloc failure. Reboot.
 #endif
     }
   } else {
@@ -391,7 +392,7 @@ void IRrecv::enableIRIn(const bool pullup) {
     pinMode(params.recvpin, INPUT);
 #endif  // UNIT_TEST
   }
-#if defined(ESP32)
+#if (defined(ESP32) && !defined(IR_ESPURNA))
   // Initialise the ESP32 timer.
 #if defined(_ESP32_ARDUINO_CORE_V3PLUS)
   // Use newer timerBegin signature for ESP32 core version 3.x
@@ -426,7 +427,7 @@ void IRrecv::enableIRIn(const bool pullup) {
   resume();
 
 #ifndef UNIT_TEST
-#if defined(ESP8266)
+#if (defined(ESP8266) && !defined(IR_ESPURNA))
   // Initialise ESP8266 timer.
   os_timer_disarm(&timer);
   os_timer_setfn(&timer, reinterpret_cast<os_timer_func_t *>(read_timeout),
@@ -441,13 +442,13 @@ void IRrecv::enableIRIn(const bool pullup) {
 /// Disable any timers and interrupts.
 void IRrecv::disableIRIn(void) {
 #ifndef UNIT_TEST
-#if defined(ESP8266)
+#if (defined(ESP8266) && !defined(IR_ESPURNA))
   os_timer_disarm(&timer);
 #elif defined(_ESP32_ARDUINO_CORE_V3PLUS)
   timerWrite(timer, 0);  // Reset the timer
   timerDetachInterrupt(timer);
   timerEnd(timer);
-#elif defined(ESP32)
+#elif (defined(ESP32) && !defined(IR_ESPURNA))
   timerAlarmDisable(timer);
   timerDetachInterrupt(timer);
   timerEnd(timer);
@@ -463,7 +464,7 @@ void IRrecv::pause(void) {
   params.rcvstate = kStopState;
   params.rawlen = 0;
   params.overflow = false;
-#if defined(ESP32)
+#if (defined(ESP32) && !defined(IR_ESPURNA))
   gpio_intr_disable((gpio_num_t)params.recvpin);
 #endif  // ESP32
 }
@@ -476,7 +477,7 @@ void IRrecv::resume(void) {
   params.rcvstate = kIdleState;
   params.rawlen = 0;
   params.overflow = false;
-#if defined(ESP32)
+#if (defined(ESP32) && !defined(IR_ESPURNA))
   // Check for ESP32 core version and handle timer functions differently
 #if defined(_ESP32_ARDUINO_CORE_V3PLUS)
   timerWrite(timer, 0);  // Reset the timer (no need for timerAlarmDisable)
@@ -612,12 +613,12 @@ bool IRrecv::decode(decode_results *results, irparams_t *save,
                     uint8_t max_skip, uint16_t noise_floor) {
   // Proceed only if an IR message been received.
 #ifndef UNIT_TEST
-#if defined(LIBRETINY)
+#if defined(IR_ESPURNA)
   // No timer: the message ended when there was no edge for the timeout
   if ((params.rcvstate != kStopState) && params.rawlen &&
       ((micros() - _IRrecv::last_edge) >= MS_TO_USEC(params.timeout)))
     read_timeout();
-#endif  // LIBRETINY
+#endif  // IR_ESPURNA
   if (params.rcvstate != kStopState) return false;
 #endif
 

@@ -47,6 +47,14 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+// ESPurna (the `rtos` branch of the fork): the platform of the library is <espurna_base.h> of the library
+// espurna-base instead of <Arduino.h>, on every chip; the firmware implements its calls
+#define IR_ESPURNA 1
+#ifndef UNIT_TEST
+#include <espurna_base.h>
+// out of memory for the capture buffers
+#define IR_RESTART() espurna_restart()
+#endif  // UNIT_TEST
 #ifdef UNIT_TEST
 #include <iostream>
 #include <string>
@@ -1538,7 +1546,7 @@ const uint16_t kEuromBits = kEuromStateLength * 8;
   } \
   while (0)
 #endif  // UNIT_TEST
-#ifdef ARDUINO
+#if defined(ARDUINO) && !defined(IR_ESPURNA)
 #define DPRINT(x) do { \
     Serial.print(x); \
   } \
