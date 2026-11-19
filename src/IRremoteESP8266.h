@@ -47,8 +47,9 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
-// ESPurna (the `rtos` branch of the fork): the platform of the library is <espurna_base.h> of the library
-// espurna-base instead of <Arduino.h>, on every chip; the firmware implements its calls
+// ESPurna (the `rtos` branch of the fork): the platform of the library is
+// <espurna_base.h> of the library espurna-base instead of <Arduino.h>, on
+// every chip; the firmware implements its calls
 #define IR_ESPURNA 1
 #ifndef UNIT_TEST
 #include <espurna_base.h>

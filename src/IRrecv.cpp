@@ -44,7 +44,8 @@ extern "C" {
 #define USE_IRAM_ATTR IRAM_ATTR
 #endif  // ESP32
 #if defined(IR_ESPURNA)
-// the interrupt handler in IRAM where the chip has it (ESPurna's IRAM_ATTR: ESP8266, ESP32; nothing on the BK7231N)
+// the interrupt handler in IRAM where the chip has it (IRAM_ATTR of
+// espurna_base.h: ESP8266, ESP32; nothing on the BK7231N)
 #define USE_IRAM_ATTR IRAM_ATTR
 #endif  // IR_ESPURNA
 #endif  // USE_IRAM_ATTR
@@ -66,7 +67,8 @@ static ETSTimer timer;
 }  // namespace _IRrecv
 #endif  // ESP8266
 #if defined(IR_ESPURNA)
-// ESPurna (every chip): no timer, the end of a message is found from the time of the last edge (decode())
+// ESPurna (every chip): no timer, the end of a message is found from the
+// time of the last edge (decode())
 namespace _IRrecv {
 static volatile uint32_t last_edge = 0;
 }  // namespace _IRrecv
@@ -157,7 +159,7 @@ namespace _IRrecv {
 static hw_timer_t *timer = NULL;
 }  // namespace _IRrecv
 #endif  // ESP32
-#if (defined(ESP8266) && !defined(IR_ESPURNA)) || (defined(ESP32) && !defined(IR_ESPURNA))
+#if (defined(ESP8266) || defined(ESP32)) && !defined(IR_ESPURNA)
 using _IRrecv::timer;
 #endif  // ESP8266 || ESP32
 #endif  // UNIT_TEST
