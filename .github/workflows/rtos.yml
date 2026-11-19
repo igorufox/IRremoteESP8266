@@ -1,0 +1,57 @@
+name: rtos
+
+# The `rtos` branch alone, as a firmware would take it: every source of src/ against the platform header of
+# espurna-base (the tag below) instead of Arduino.h, by the host GCC and by the ARM GCC (the BK7231N core). A compile
+# check: the calls of espurna_base.h are implemented by the firmware that uses the library, nothing is linked.
+# (Build.yml builds the Arduino examples of master.)
+
+on:
+  push:
+    branches: [ rtos ]
+  pull_request:
+    branches: [ rtos ]
+  workflow_dispatch:
+
+env:
+  ESPURNA_BASE: "1.0.0"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: host
+            cxx: g++
+            flags: ""
+          - name: arm968e-s
+            cxx: arm-none-eabi-g++
+            flags: "-mcpu=arm968e-s -mthumb"
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: espurna-base
+        uses: actions/checkout@v4
+        with:
+          repository: igorufox/espurna-base
+          ref: ${{ env.ESPURNA_BASE }}
+          path: deps/espurna-base
+
+      - name: ARM GCC
+        if: matrix.cxx == 'arm-none-eabi-g++'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+
+      - name: Compile
+        run: |
+          set -e
+          ${{ matrix.cxx }} --version | head -1
+          FLAGS="-std=gnu++17 -w -Isrc -Ideps/espurna-base/src ${{ matrix.flags }}"
+          mkdir -p out
+          for f in src/*.cpp; do
+            echo "== $f"
+            ${{ matrix.cxx }} $FLAGS -c "$f" -o "out/$(basename "$f").o"
+          done
